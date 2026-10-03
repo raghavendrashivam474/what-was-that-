@@ -33,3 +33,21 @@ class InvalidImageFailure extends Failure {
     super.message = 'The captured image could not be processed.',
   ]);
 }
+
+class StorageFailure extends Failure {
+  const StorageFailure([
+    super.message = "Couldn't save this discovery. Please try again.",
+  ]);
+}
+
+class ImagePersistenceFailure extends Failure {
+  const ImagePersistenceFailure([
+    super.message = "Couldn't save the captured image. Please try again.",
+  ]);
+}
+
+class DiscoveryNotFoundFailure extends Failure {
+  const DiscoveryNotFoundFailure([
+    super.message = 'This discovery is no longer available.',
+  ]);
+}

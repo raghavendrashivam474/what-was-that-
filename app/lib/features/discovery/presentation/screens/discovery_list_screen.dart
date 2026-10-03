@@ -1,7 +1,9 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:what_was_that/features/discovery/data/services/platform_discovery_exporter.dart';
 import 'package:what_was_that/features/discovery/domain/entities/discovery.dart';
 import 'package:what_was_that/features/discovery/domain/repositories/discovery_repository.dart';
+import 'package:what_was_that/features/discovery/domain/services/discovery_exporter.dart';
 import 'package:what_was_that/features/identification/domain/entities/identification_result.dart';
 import 'package:what_was_that/features/identification/domain/repositories/image_identifier.dart';
 import 'package:what_was_that/features/identification/presentation/screens/camera_screen.dart';
@@ -11,11 +13,13 @@ import 'package:what_was_that/features/discovery/presentation/screens/discovery_
 class DiscoveryListScreen extends StatefulWidget {
   final DiscoveryRepository repository;
   final ImageIdentifier identifier;
+  final DiscoveryExporter exporter;
 
   const DiscoveryListScreen({
     super.key,
     required this.repository,
     required this.identifier,
+    this.exporter = const PlatformDiscoveryExporter(),
   });
 
   @override
@@ -84,6 +88,29 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
     }
   }
 
+  Future<void> _exportDiscoveries() async {
+    if (_allDiscoveries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No discoveries to export yet.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await widget.exporter.export(_allDiscoveries);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't export discoveries. Please try again."),
+          ),
+        );
+      }
+    }
+  }
+
   bool _isToday(DateTime date) {
     final now = DateTime.now();
     return date.year == now.year &&
@@ -101,6 +128,7 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
   String _sectionLabel(DateTime date) {
     if (_isToday(date)) return 'Today';
     if (_isYesterday(date)) return 'Yesterday';
+
     const months = [
       'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'
@@ -172,6 +200,12 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
         title: const Text('My Discoveries'),
         centerTitle: true,
         actions: [
+          IconButton(
+            key: const Key('export_discoveries_button'),
+            icon: const Icon(Icons.file_upload_outlined),
+            tooltip: 'Export Discoveries',
+            onPressed: _exportDiscoveries,
+          ),
           IconButton(
             icon: const Icon(Icons.map_outlined),
             tooltip: 'Discovery Map',
@@ -261,7 +295,6 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -313,7 +346,6 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
 
   Widget _buildNoResultsState() {
     final theme = Theme.of(context);
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),

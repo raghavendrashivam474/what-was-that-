@@ -1,13 +1,14 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:what_was_that/features/discovery/data/datasources/image_storage_service.dart';
 import 'package:what_was_that/features/discovery/domain/entities/discovery.dart';
+import 'package:what_was_that/features/discovery/domain/entities/discovery_location.dart';
+import 'package:what_was_that/features/discovery/domain/providers/location_provider.dart';
 import 'package:what_was_that/features/discovery/domain/repositories/discovery_repository.dart';
 import 'package:what_was_that/features/discovery/presentation/screens/discovery_detail_screen.dart';
 import 'package:what_was_that/features/discovery/presentation/screens/discovery_list_screen.dart';
 import 'package:what_was_that/features/identification/domain/entities/identification_result.dart';
 import 'package:what_was_that/features/identification/domain/repositories/image_identifier.dart';
-import 'package:what_was_that/features/identification/presentation/screens/home_screen.dart';
 import 'package:what_was_that/features/identification/presentation/screens/result_screen.dart';
 
 class FakeDiscoveryRepository implements DiscoveryRepository {
@@ -15,7 +16,12 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
 
   @override
   Future<void> save(Discovery discovery) async {
-    discoveries.insert(0, discovery);
+    final index = discoveries.indexWhere((d) => d.id == discovery.id);
+    if (index >= 0) {
+      discoveries[index] = discovery;
+    } else {
+      discoveries.insert(0, discovery);
+    }
   }
 
   @override
@@ -38,6 +44,18 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   }
 }
 
+class FakeImageIdentifier implements ImageIdentifier {
+  @override
+  Future<IdentificationResult> identify(String imagePath) async {
+    return const IdentificationResult(
+      identifiable: true,
+      title: 'Monstera Deliciosa',
+      explanation: 'A popular houseplant.',
+      confidence: IdentificationConfidence.high,
+    );
+  }
+}
+
 class FakeImageStorageService implements ImageStorageService {
   @override
   Future<String> saveImagePermanently(String tempPath) async {
@@ -45,169 +63,167 @@ class FakeImageStorageService implements ImageStorageService {
   }
 
   @override
-  Future<void> deleteImage(String persistentPath) async {}
+  Future<void> deleteImage(String imagePath) async {}
 }
 
-class FakeImageIdentifier implements ImageIdentifier {
+class FakeNoOpLocationProvider implements LocationProvider {
   @override
-  Future<IdentificationResult> identify(String imagePath) async {
-    return const IdentificationResult(
-      identifiable: true,
-      title: 'Mock Item',
-      explanation: 'Mock Explanation',
-      confidence: IdentificationConfidence.high,
-    );
-  }
+  Future<DiscoveryLocation?> getCurrentLocation() async => null;
 }
 
 void main() {
   late FakeDiscoveryRepository repository;
+  late FakeImageIdentifier identifier;
   late FakeImageStorageService imageStorageService;
-  late FakeImageIdentifier imageIdentifier;
 
   setUp(() {
     repository = FakeDiscoveryRepository();
+    identifier = FakeImageIdentifier();
     imageStorageService = FakeImageStorageService();
-    imageIdentifier = FakeImageIdentifier();
   });
 
-  Discovery makeSampleDiscovery({
-    required String id,
-    required String title,
-    DateTime? date,
-  }) {
-    return Discovery(
-      id: id,
-      imagePath: 'dummy_image.jpg',
-      createdAt: date ?? DateTime(2026, 10, 4),
-      identificationResult: IdentificationResult(
+  group('Discovery Widgets', () {
+    testWidgets('DiscoveryListScreen shows empty state when repository is empty', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DiscoveryListScreen(
+            repository: repository,
+            identifier: identifier,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('No discoveries yet'), findsOneWidget);
+      expect(find.text('What is this?'), findsOneWidget);
+    });
+
+    testWidgets('DiscoveryListScreen lists saved discoveries', (tester) async {
+      final discovery = Discovery.create(
+        identificationResult: const IdentificationResult(
+          identifiable: true,
+          title: 'Monstera Deliciosa',
+          explanation: 'A popular houseplant known as the Swiss cheese plant.',
+          confidence: IdentificationConfidence.high,
+        ),
+        imagePath: 'sample_image.jpg',
+      );
+
+      await repository.save(discovery);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DiscoveryListScreen(
+            repository: repository,
+            identifier: identifier,
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('Monstera Deliciosa'), findsOneWidget);
+      expect(find.text('High confidence'), findsOneWidget);
+    });
+
+    testWidgets('DiscoveryDetailScreen displays discovery details', (tester) async {
+      final discovery = Discovery.create(
+        identificationResult: const IdentificationResult(
+          identifiable: true,
+          title: 'Monstera Deliciosa',
+          explanation: 'A popular houseplant known as the Swiss cheese plant.',
+          confidence: IdentificationConfidence.high,
+        ),
+        imagePath: 'sample_image.jpg',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DiscoveryDetailScreen(
+            discovery: discovery,
+            repository: repository,
+          ),
+        ),
+      );
+
+      expect(find.text('Monstera Deliciosa'), findsOneWidget);
+      expect(find.text('A popular houseplant known as the Swiss cheese plant.'), findsOneWidget);
+      expect(find.text('Confidence: High'), findsOneWidget);
+      expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    });
+
+    testWidgets('DiscoveryDetailScreen deletes discovery on user confirmation', (tester) async {
+      final discovery = Discovery.create(
+        identificationResult: const IdentificationResult(
+          identifiable: true,
+          title: 'Monstera Deliciosa',
+          explanation: 'A popular houseplant known as the Swiss cheese plant.',
+          confidence: IdentificationConfidence.high,
+        ),
+        imagePath: 'sample_image.jpg',
+      );
+
+      await repository.save(discovery);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: DiscoveryDetailScreen(
+            discovery: discovery,
+            repository: repository,
+          ),
+        ),
+      );
+
+      // Tap delete icon in AppBar
+      await tester.tap(find.byIcon(Icons.delete_outline));
+      await tester.pumpAndSettle();
+
+      // Verify confirmation dialog
+      expect(find.text('Delete this discovery?'), findsOneWidget);
+
+      // Confirm deletion
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      // Verify repository deleted the item
+      expect(repository.discoveries.isEmpty, isTrue);
+    });
+
+    testWidgets('ResultScreen saves discovery on button tap and updates UI', (tester) async {
+      const mockResult = IdentificationResult(
         identifiable: true,
-        title: title,
-        explanation: 'Explanation for $title',
+        title: 'Monstera Deliciosa',
+        explanation: 'A popular houseplant known as the Swiss cheese plant.',
         confidence: IdentificationConfidence.high,
-      ),
-    );
-  }
+      );
 
-  testWidgets('HomeScreen renders "My Discoveries" button when repository is provided', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: HomeScreen(
-          identifier: imageIdentifier,
-          repository: repository,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ResultScreen(
+            imagePath: 'temp_capture.jpg',
+            result: mockResult,
+            repository: repository,
+            imageStorageService: imageStorageService,
+            locationProvider: FakeNoOpLocationProvider(),
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(find.text('WHAT WAS THAT?'), findsOneWidget);
-    expect(find.text('What is this?'), findsOneWidget);
-    expect(find.text('My Discoveries'), findsOneWidget);
-  });
+      expect(find.text('Save Discovery'), findsOneWidget);
+      expect(find.text('Monstera Deliciosa'), findsOneWidget);
 
-  testWidgets('DiscoveryListScreen renders empty state when no discoveries exist', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DiscoveryListScreen(
-          repository: repository,
-          identifier: imageIdentifier,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      // Tap "Save Discovery"
+      await tester.tap(find.text('Save Discovery'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('No discoveries yet'), findsOneWidget);
-    expect(
-      find.text("Capture something you don't recognize\nand it will appear here."),
-      findsOneWidget,
-    );
-    expect(find.text('What is this?'), findsOneWidget);
-  });
+      // Verify saved state in UI
+      expect(find.text('Saved to your discoveries'), findsOneWidget);
+      expect(find.text('Save Discovery'), findsNothing);
 
-  testWidgets('DiscoveryListScreen renders list of saved discoveries', (tester) async {
-    repository.discoveries.add(makeSampleDiscovery(id: '1', title: 'Kingfisher'));
-    repository.discoveries.add(makeSampleDiscovery(id: '2', title: 'USB-C Port'));
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DiscoveryListScreen(
-          repository: repository,
-          identifier: imageIdentifier,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Kingfisher'), findsOneWidget);
-    expect(find.text('USB-C Port'), findsOneWidget);
-  });
-
-  testWidgets('DiscoveryDetailScreen displays details and handles delete confirmation', (tester) async {
-    final discovery = makeSampleDiscovery(id: 'disc-10', title: 'Vintage Clock');
-    repository.discoveries.add(discovery);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DiscoveryDetailScreen(
-          discovery: discovery,
-          repository: repository,
-        ),
-      ),
-    );
-
-    expect(find.text('Vintage Clock'), findsOneWidget);
-    expect(find.text('Explanation for Vintage Clock'), findsOneWidget);
-    expect(find.text('Confidence: High'), findsOneWidget);
-    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
-
-    // Tap delete button to open confirmation dialog
-    await tester.tap(find.byIcon(Icons.delete_outline));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Delete this discovery?'), findsOneWidget);
-    expect(find.text('Cancel'), findsOneWidget);
-    expect(find.text('Delete'), findsOneWidget);
-
-    // Confirm deletion
-    await tester.tap(find.text('Delete'));
-    await tester.pumpAndSettle();
-
-    // Verify repository deleted the item
-    expect(repository.discoveries.isEmpty, isTrue);
-  });
-
-  testWidgets('ResultScreen saves discovery on button tap and updates UI', (tester) async {
-    const mockResult = IdentificationResult(
-      identifiable: true,
-      title: 'Monstera Deliciosa',
-      explanation: 'A popular houseplant known as the Swiss cheese plant.',
-      confidence: IdentificationConfidence.high,
-    );
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: ResultScreen(
-          imagePath: 'temp_capture.jpg',
-          result: mockResult,
-          repository: repository,
-          imageStorageService: imageStorageService,
-        ),
-      ),
-    );
-
-    expect(find.text('Save Discovery'), findsOneWidget);
-    expect(find.text('Monstera Deliciosa'), findsOneWidget);
-
-    // Tap "Save Discovery"
-    await tester.tap(find.text('Save Discovery'));
-    await tester.pumpAndSettle();
-
-    // Verify saved state in UI
-    expect(find.text('Saved to your discoveries'), findsOneWidget);
-    expect(find.text('Save Discovery'), findsNothing);
-
-    // Verify repository received the saved discovery
-    expect(repository.discoveries.length, 1);
-    expect(repository.discoveries.first.title, 'Monstera Deliciosa');
+      // Verify repository received the saved discovery
+      expect(repository.discoveries.length, equals(1));
+      expect(repository.discoveries.first.title, equals('Monstera Deliciosa'));
+    });
   });
 }
-

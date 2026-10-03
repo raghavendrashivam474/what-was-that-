@@ -1,7 +1,8 @@
-﻿import 'package:drift/drift.dart';
+import 'package:drift/drift.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../identification/domain/entities/identification_result.dart';
 import '../../domain/entities/discovery.dart';
+import '../../domain/entities/discovery_location.dart';
 import '../../domain/repositories/discovery_repository.dart';
 import '../datasources/discovery_database.dart';
 import '../datasources/image_storage_service.dart';
@@ -27,6 +28,8 @@ class DriftDiscoveryRepository implements DiscoveryRepository {
               identifiable: Value(discovery.identifiable),
               imagePath: discovery.imagePath,
               createdAt: discovery.createdAt,
+              latitude: Value(discovery.location?.latitude),
+              longitude: Value(discovery.location?.longitude),
             ),
           );
     } catch (e) {
@@ -40,7 +43,6 @@ class DriftDiscoveryRepository implements DiscoveryRepository {
       final rows = await (database.select(database.discoveries)
             ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
           .get();
-
       return rows.map(_mapEntryToDiscovery).toList();
     } catch (e) {
       throw const StorageFailure();
@@ -53,7 +55,6 @@ class DriftDiscoveryRepository implements DiscoveryRepository {
       final row = await (database.select(database.discoveries)
             ..where((t) => t.id.equals(id)))
           .getSingleOrNull();
-
       if (row == null) return null;
       return _mapEntryToDiscovery(row);
     } catch (e) {
@@ -79,10 +80,19 @@ class DriftDiscoveryRepository implements DiscoveryRepository {
   }
 
   Discovery _mapEntryToDiscovery(DiscoveryEntry entry) {
+    DiscoveryLocation? location;
+    if (entry.latitude != null && entry.longitude != null) {
+      location = DiscoveryLocation(
+        latitude: entry.latitude!,
+        longitude: entry.longitude!,
+      );
+    }
+
     return Discovery(
       id: entry.id,
       imagePath: entry.imagePath,
       createdAt: entry.createdAt,
+      location: location,
       identificationResult: IdentificationResult(
         identifiable: entry.identifiable,
         title: entry.title,

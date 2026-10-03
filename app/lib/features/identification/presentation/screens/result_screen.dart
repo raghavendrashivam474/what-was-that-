@@ -1,8 +1,11 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../discovery/data/datasources/image_storage_service.dart';
+import '../../../discovery/data/providers/geolocator_location_provider.dart';
 import '../../../discovery/domain/entities/discovery.dart';
+import '../../../discovery/domain/entities/discovery_location.dart';
+import '../../../discovery/domain/providers/location_provider.dart';
 import '../../../discovery/domain/repositories/discovery_repository.dart';
 import '../../domain/entities/identification_result.dart';
 
@@ -11,6 +14,7 @@ class ResultScreen extends StatefulWidget {
   final IdentificationResult result;
   final DiscoveryRepository? repository;
   final ImageStorageService? imageStorageService;
+  final LocationProvider? locationProvider;
 
   const ResultScreen({
     super.key,
@@ -18,6 +22,7 @@ class ResultScreen extends StatefulWidget {
     required this.result,
     this.repository,
     this.imageStorageService,
+    this.locationProvider,
   });
 
   @override
@@ -50,17 +55,41 @@ class _ResultScreenState extends State<ResultScreen> {
 
     String? persistedImagePath;
     try {
-      final storageService = widget.imageStorageService ?? LocalImageStorageService();
-      persistedImagePath = await storageService.saveImagePermanently(widget.imagePath);
+      // 1. Attempt location capture (non-blocking fallback)
+      DiscoveryLocation? location;
+      if (widget.locationProvider != null) {
+        try {
+          location = await widget.locationProvider!.getCurrentLocation();
+        } catch (_) {
+          location = null;
+        }
+      } else {
+        try {
+          const provider = GeolocatorLocationProvider();
+          location = await provider.getCurrentLocation();
+        } catch (_) {
+          location = null;
+        }
+      }
 
+      // 2. Persist image permanently
+      final storageService =
+          widget.imageStorageService ?? LocalImageStorageService();
+      persistedImagePath =
+          await storageService.saveImagePermanently(widget.imagePath);
+
+      // 3. Create Discovery with optional location
       final discovery = Discovery.create(
         identificationResult: widget.result,
         imagePath: persistedImagePath,
+        location: location,
       );
 
+      // 4. Save to repository
       await widget.repository!.save(discovery);
 
       if (!mounted) return;
+
       setState(() {
         _isSaving = false;
         _isSaved = true;
@@ -68,18 +97,20 @@ class _ResultScreenState extends State<ResultScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✓ Saved to your discoveries'),
+          content: Text('? Saved to your discoveries'),
           duration: Duration(seconds: 2),
         ),
       );
     } catch (e) {
       // If db save failed after copying image, cleanup to prevent orphaned file
       if (persistedImagePath != null) {
-        final storageService = widget.imageStorageService ?? LocalImageStorageService();
+        final storageService =
+            widget.imageStorageService ?? LocalImageStorageService();
         await storageService.deleteImage(persistedImagePath);
       }
 
       if (!mounted) return;
+
       setState(() {
         _isSaving = false;
       });
@@ -134,6 +165,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
               // Title / Identification name
               Text(
                 widget.result.title,
@@ -144,13 +176,15 @@ class _ResultScreenState extends State<ResultScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
+
               // Explanation
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isUnidentifiable
                       ? Colors.orange.shade50
-                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      : theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isUnidentifiable
@@ -167,6 +201,7 @@ class _ResultScreenState extends State<ResultScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+
               // Confidence badge
               if (widget.result.identifiable)
                 Center(
@@ -176,7 +211,8 @@ class _ResultScreenState extends State<ResultScreen> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getConfidenceColor(widget.result.confidence).withValues(alpha: 0.12),
+                      color: _getConfidenceColor(widget.result.confidence)
+                          .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _getConfidenceColor(widget.result.confidence),
@@ -192,6 +228,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   ),
                 ),
               const SizedBox(height: 32),
+
               // Save Discovery Button (if repository provided)
               if (widget.repository != null) ...[
                 if (_isSaved)
@@ -205,7 +242,8 @@ class _ResultScreenState extends State<ResultScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                        Icon(Icons.check_circle,
+                            color: Colors.green.shade700, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Saved to your discoveries',
@@ -225,12 +263,14 @@ class _ResultScreenState extends State<ResultScreen> {
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.bookmark_add_outlined),
                     label: Text(
                       _isSaving ? 'Saving...' : 'Save Discovery',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -241,6 +281,7 @@ class _ResultScreenState extends State<ResultScreen> {
                   ),
                 const SizedBox(height: 12),
               ],
+
               // Try Again Button
               OutlinedButton.icon(
                 onPressed: () {

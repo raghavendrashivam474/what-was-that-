@@ -53,9 +53,30 @@ class $DiscoveriesTable extends Discoveries
   late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
       'created_at', aliasedName, false,
       type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _latitudeMeta =
+      const VerificationMeta('latitude');
   @override
-  List<GeneratedColumn> get $columns =>
-      [id, title, explanation, confidence, identifiable, imagePath, createdAt];
+  late final GeneratedColumn<double> latitude = GeneratedColumn<double>(
+      'latitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  static const VerificationMeta _longitudeMeta =
+      const VerificationMeta('longitude');
+  @override
+  late final GeneratedColumn<double> longitude = GeneratedColumn<double>(
+      'longitude', aliasedName, true,
+      type: DriftSqlType.double, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        title,
+        explanation,
+        confidence,
+        identifiable,
+        imagePath,
+        createdAt,
+        latitude,
+        longitude
+      ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -111,6 +132,14 @@ class $DiscoveriesTable extends Discoveries
     } else if (isInserting) {
       context.missing(_createdAtMeta);
     }
+    if (data.containsKey('latitude')) {
+      context.handle(_latitudeMeta,
+          latitude.isAcceptableOrUnknown(data['latitude']!, _latitudeMeta));
+    }
+    if (data.containsKey('longitude')) {
+      context.handle(_longitudeMeta,
+          longitude.isAcceptableOrUnknown(data['longitude']!, _longitudeMeta));
+    }
     return context;
   }
 
@@ -134,6 +163,10 @@ class $DiscoveriesTable extends Discoveries
           .read(DriftSqlType.string, data['${effectivePrefix}image_path'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      latitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}latitude']),
+      longitude: attachedDatabase.typeMapping
+          .read(DriftSqlType.double, data['${effectivePrefix}longitude']),
     );
   }
 
@@ -151,6 +184,8 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
   final bool identifiable;
   final String imagePath;
   final DateTime createdAt;
+  final double? latitude;
+  final double? longitude;
   const DiscoveryEntry(
       {required this.id,
       required this.title,
@@ -158,7 +193,9 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
       required this.confidence,
       required this.identifiable,
       required this.imagePath,
-      required this.createdAt});
+      required this.createdAt,
+      this.latitude,
+      this.longitude});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -169,6 +206,12 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
     map['identifiable'] = Variable<bool>(identifiable);
     map['image_path'] = Variable<String>(imagePath);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || latitude != null) {
+      map['latitude'] = Variable<double>(latitude);
+    }
+    if (!nullToAbsent || longitude != null) {
+      map['longitude'] = Variable<double>(longitude);
+    }
     return map;
   }
 
@@ -181,6 +224,12 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
       identifiable: Value(identifiable),
       imagePath: Value(imagePath),
       createdAt: Value(createdAt),
+      latitude: latitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(latitude),
+      longitude: longitude == null && nullToAbsent
+          ? const Value.absent()
+          : Value(longitude),
     );
   }
 
@@ -195,6 +244,8 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
       identifiable: serializer.fromJson<bool>(json['identifiable']),
       imagePath: serializer.fromJson<String>(json['imagePath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      latitude: serializer.fromJson<double?>(json['latitude']),
+      longitude: serializer.fromJson<double?>(json['longitude']),
     );
   }
   @override
@@ -208,6 +259,8 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
       'identifiable': serializer.toJson<bool>(identifiable),
       'imagePath': serializer.toJson<String>(imagePath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'latitude': serializer.toJson<double?>(latitude),
+      'longitude': serializer.toJson<double?>(longitude),
     };
   }
 
@@ -218,7 +271,9 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
           String? confidence,
           bool? identifiable,
           String? imagePath,
-          DateTime? createdAt}) =>
+          DateTime? createdAt,
+          Value<double?> latitude = const Value.absent(),
+          Value<double?> longitude = const Value.absent()}) =>
       DiscoveryEntry(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -227,6 +282,8 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
         identifiable: identifiable ?? this.identifiable,
         imagePath: imagePath ?? this.imagePath,
         createdAt: createdAt ?? this.createdAt,
+        latitude: latitude.present ? latitude.value : this.latitude,
+        longitude: longitude.present ? longitude.value : this.longitude,
       );
   DiscoveryEntry copyWithCompanion(DiscoveriesCompanion data) {
     return DiscoveryEntry(
@@ -241,6 +298,8 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
           : this.identifiable,
       imagePath: data.imagePath.present ? data.imagePath.value : this.imagePath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      latitude: data.latitude.present ? data.latitude.value : this.latitude,
+      longitude: data.longitude.present ? data.longitude.value : this.longitude,
     );
   }
 
@@ -253,14 +312,16 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
           ..write('confidence: $confidence, ')
           ..write('identifiable: $identifiable, ')
           ..write('imagePath: $imagePath, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(
-      id, title, explanation, confidence, identifiable, imagePath, createdAt);
+  int get hashCode => Object.hash(id, title, explanation, confidence,
+      identifiable, imagePath, createdAt, latitude, longitude);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -271,7 +332,9 @@ class DiscoveryEntry extends DataClass implements Insertable<DiscoveryEntry> {
           other.confidence == this.confidence &&
           other.identifiable == this.identifiable &&
           other.imagePath == this.imagePath &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.latitude == this.latitude &&
+          other.longitude == this.longitude);
 }
 
 class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
@@ -282,6 +345,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
   final Value<bool> identifiable;
   final Value<String> imagePath;
   final Value<DateTime> createdAt;
+  final Value<double?> latitude;
+  final Value<double?> longitude;
   final Value<int> rowid;
   const DiscoveriesCompanion({
     this.id = const Value.absent(),
@@ -291,6 +356,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
     this.identifiable = const Value.absent(),
     this.imagePath = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   DiscoveriesCompanion.insert({
@@ -301,6 +368,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
     this.identifiable = const Value.absent(),
     required String imagePath,
     required DateTime createdAt,
+    this.latitude = const Value.absent(),
+    this.longitude = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
         title = Value(title),
@@ -316,6 +385,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
     Expression<bool>? identifiable,
     Expression<String>? imagePath,
     Expression<DateTime>? createdAt,
+    Expression<double>? latitude,
+    Expression<double>? longitude,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -326,6 +397,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
       if (identifiable != null) 'identifiable': identifiable,
       if (imagePath != null) 'image_path': imagePath,
       if (createdAt != null) 'created_at': createdAt,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -338,6 +411,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
       Value<bool>? identifiable,
       Value<String>? imagePath,
       Value<DateTime>? createdAt,
+      Value<double?>? latitude,
+      Value<double?>? longitude,
       Value<int>? rowid}) {
     return DiscoveriesCompanion(
       id: id ?? this.id,
@@ -347,6 +422,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
       identifiable: identifiable ?? this.identifiable,
       imagePath: imagePath ?? this.imagePath,
       createdAt: createdAt ?? this.createdAt,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -375,6 +452,12 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (latitude.present) {
+      map['latitude'] = Variable<double>(latitude.value);
+    }
+    if (longitude.present) {
+      map['longitude'] = Variable<double>(longitude.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -391,6 +474,8 @@ class DiscoveriesCompanion extends UpdateCompanion<DiscoveryEntry> {
           ..write('identifiable: $identifiable, ')
           ..write('imagePath: $imagePath, ')
           ..write('createdAt: $createdAt, ')
+          ..write('latitude: $latitude, ')
+          ..write('longitude: $longitude, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -417,6 +502,8 @@ typedef $$DiscoveriesTableCreateCompanionBuilder = DiscoveriesCompanion
   Value<bool> identifiable,
   required String imagePath,
   required DateTime createdAt,
+  Value<double?> latitude,
+  Value<double?> longitude,
   Value<int> rowid,
 });
 typedef $$DiscoveriesTableUpdateCompanionBuilder = DiscoveriesCompanion
@@ -428,6 +515,8 @@ typedef $$DiscoveriesTableUpdateCompanionBuilder = DiscoveriesCompanion
   Value<bool> identifiable,
   Value<String> imagePath,
   Value<DateTime> createdAt,
+  Value<double?> latitude,
+  Value<double?> longitude,
   Value<int> rowid,
 });
 
@@ -460,6 +549,12 @@ class $$DiscoveriesTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get latitude => $composableBuilder(
+      column: $table.latitude, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get longitude => $composableBuilder(
+      column: $table.longitude, builder: (column) => ColumnFilters(column));
 }
 
 class $$DiscoveriesTableOrderingComposer
@@ -492,6 +587,12 @@ class $$DiscoveriesTableOrderingComposer
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get latitude => $composableBuilder(
+      column: $table.latitude, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get longitude => $composableBuilder(
+      column: $table.longitude, builder: (column) => ColumnOrderings(column));
 }
 
 class $$DiscoveriesTableAnnotationComposer
@@ -523,6 +624,12 @@ class $$DiscoveriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<double> get latitude =>
+      $composableBuilder(column: $table.latitude, builder: (column) => column);
+
+  GeneratedColumn<double> get longitude =>
+      $composableBuilder(column: $table.longitude, builder: (column) => column);
 }
 
 class $$DiscoveriesTableTableManager extends RootTableManager<
@@ -558,6 +665,8 @@ class $$DiscoveriesTableTableManager extends RootTableManager<
             Value<bool> identifiable = const Value.absent(),
             Value<String> imagePath = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               DiscoveriesCompanion(
@@ -568,6 +677,8 @@ class $$DiscoveriesTableTableManager extends RootTableManager<
             identifiable: identifiable,
             imagePath: imagePath,
             createdAt: createdAt,
+            latitude: latitude,
+            longitude: longitude,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -578,6 +689,8 @@ class $$DiscoveriesTableTableManager extends RootTableManager<
             Value<bool> identifiable = const Value.absent(),
             required String imagePath,
             required DateTime createdAt,
+            Value<double?> latitude = const Value.absent(),
+            Value<double?> longitude = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               DiscoveriesCompanion.insert(
@@ -588,6 +701,8 @@ class $$DiscoveriesTableTableManager extends RootTableManager<
             identifiable: identifiable,
             imagePath: imagePath,
             createdAt: createdAt,
+            latitude: latitude,
+            longitude: longitude,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

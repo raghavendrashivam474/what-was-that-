@@ -1,18 +1,22 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../features/discovery/domain/entities/discovery.dart';
 import '../../../../features/discovery/domain/repositories/discovery_repository.dart';
+import '../../../../features/discovery/domain/services/discovery_sharer.dart';
+import '../../../../features/discovery/data/services/platform_discovery_sharer.dart';
 import '../../../../features/identification/domain/entities/identification_result.dart';
 import '../../presentation/screens/discovery_map_screen.dart';
 
 class DiscoveryDetailScreen extends StatelessWidget {
   final Discovery discovery;
   final DiscoveryRepository repository;
+  final DiscoverySharer sharer;
 
   const DiscoveryDetailScreen({
     super.key,
     required this.discovery,
     required this.repository,
+    this.sharer = const PlatformDiscoverySharer(),
   });
 
   String _formatDate(DateTime date) {
@@ -36,6 +40,20 @@ class DiscoveryDetailScreen extends StatelessWidget {
         return Colors.amber.shade800;
       case IdentificationConfidence.unknown:
         return Colors.grey.shade700;
+    }
+  }
+
+  Future<void> _share(BuildContext context) async {
+    try {
+      await sharer.share(discovery);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Couldn't share this discovery. Please try again."),
+          ),
+        );
+      }
     }
   }
 
@@ -92,6 +110,13 @@ class DiscoveryDetailScreen extends StatelessWidget {
         title: const Text('Discovery Detail'),
         actions: [
           IconButton(
+            key: const Key('share_discovery_button'),
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Share Discovery',
+            onPressed: () => _share(context),
+          ),
+          IconButton(
+            key: const Key('delete_discovery_button'),
             icon: const Icon(Icons.delete_outline),
             tooltip: 'Delete Discovery',
             onPressed: () => _confirmAndDelete(context),
@@ -120,7 +145,6 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-
               // Date stamp
               Text(
                 'Discovered on ${_formatDate(discovery.createdAt)}',
@@ -130,7 +154,6 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-
               // Title
               Text(
                 discovery.title,
@@ -141,7 +164,6 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-
               // Explanation
               Container(
                 padding: const EdgeInsets.all(16),
@@ -166,7 +188,6 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-
               // Confidence Badge
               if (discovery.identifiable)
                 Center(
@@ -193,7 +214,6 @@ class DiscoveryDetailScreen extends StatelessWidget {
                   ),
                 ),
               const SizedBox(height: 24),
-
               // Location Segment (S3-B Spatial Recall)
               const Divider(),
               const SizedBox(height: 8),

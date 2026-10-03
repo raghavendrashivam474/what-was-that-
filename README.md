@@ -1,33 +1,33 @@
-# What Was That? 🔍
+﻿# What Was That? ðŸ”
 
 > *"See something unfamiliar? Point the camera and find out."*
 
 **What Was That?** is a lightweight mobile application that answers one simple real-world question: **What was that?**
 
-Point your camera at an unfamiliar object, plant, animal, connector, sign, or device — and receive a concise, structured identification in seconds.
+Point your camera at an unfamiliar object, plant, animal, connector, sign, or device â€” and receive a concise, structured identification in seconds.
 
 ---
 
-## ✨ Current Release — v0.2.0 (Sprint 2: Discoveries & Local Memory)
+## âœ¨ Current Release â€” v0.2.0 (Sprint 2: Discoveries & Local Memory)
 
-The S2 release graduates the app from a one-time ephemeral utility to a **durable personal memory explorer**. Identified objects can now be permanently saved as **Discoveries** with isolated offline image storage.
+The S3-A release turns your accumulated offline history into a highly navigable, structured database. It adds fast, real-time lexical search, chronological grouping, and polished discovery cards.
 
 ```text
-Capture Image → Identify via AI → Structured Result → Save Discovery → My Discoveries → Detail / Delete
+Capture Image â†’ Identify via AI â†’ Structured Result â†’ Save Discovery â†’ My Discoveries â†’ Detail / Delete
 ```
 
 ### What Works Today
-- 📷 **Camera Capture** — Live viewfinder, single-tap capture, retake support
-- 🤖 **AI Visual Identification** — Powered by OpenAI Vision (GPT-4o-mini)
-- 📋 **Structured Results** — Object name, concise explanation, confidence level
-- 💾 **Local-First SQLite Storage** — Powered by Drift & SQLite with zero account requirement or cloud dependency
-- 📂 **Persistent Image Lifecycle** — Temporary camera images are copied to application-controlled document storage on save
-- 🗂️️ **My Discoveries (History)** — Review past discoveries ordered newest first, with an interactive empty state
-- 🔍 **Discovery Detail & Deletion** — Revisit saved discoveries across app restarts or delete them permanently
-- 🛡️️ **App Restart Survival** — Database and local files survive full process restarts
-- 🚫 **Honest Uncertainty** — The AI will say "I don't know" rather than fabricate answers
-- 🔄 **Error Recovery** — Graceful handling of network failures, database errors, and permission denials
-- 🎨 **Custom Branding** — Launcher icons across all Android densities
+- ðŸ“· **Camera Capture** â€” Live viewfinder, single-tap capture, retake support
+- ðŸ¤– **AI Visual Identification** â€” Powered by OpenAI Vision (GPT-4o-mini)
+- ðŸ“‹ **Structured Results** â€” Object name, concise explanation, confidence level
+- ðŸ’¾ **Local-First SQLite Storage** â€” Powered by Drift & SQLite with zero account requirement or cloud dependency
+- ðŸ“‚ **Persistent Image Lifecycle** â€” Temporary camera images are copied to application-controlled document storage on save
+- ðŸ—‚ï¸ï¸ **My Discoveries (History)** â€” Review past discoveries ordered newest first, with an interactive empty state
+- ðŸ” **Discovery Detail & Deletion** â€” Revisit saved discoveries across app restarts or delete them permanently
+- ðŸ›¡ï¸ï¸ **App Restart Survival** â€” Database and local files survive full process restarts
+- ðŸš« **Honest Uncertainty** â€” The AI will say "I don't know" rather than fabricate answers
+- ðŸ”„ **Error Recovery** â€” Graceful handling of network failures, database errors, and permission denials
+- ðŸŽ¨ **Custom Branding** â€” Launcher icons across all Android densities
 
 ### What's NOT in S2 (Planned for S3+)
 - Cloud sync / multi-device
@@ -85,30 +85,30 @@ flutter run
 
 ```text
 what-was-that/
-├── app/                              # Flutter mobile application
-│   ├── lib/
-│   │   ├── core/
-│   │   │   ├── config/              # Environment and runtime configurations
-│   │   │   └── errors/              # Typed failure and error classes
-│   │   ├── features/
-│   │   │   ├── identification/      # S1 core capture & AI identification pipeline
-│   │   │   │   ├── data/            # OpenAI Vision implementation
-│   │   │   │   ├── domain/          # Entities and contracts (ImageIdentifier)
-│   │   │   │   └── presentation/    # UI Screens (Home, Camera, Result)
-│   │   │   └── discovery/           # S2 persistent local history feature
-│   │   │       ├── data/            # Drift database, ImageStorageService, repository
-│   │   │       ├── domain/          # Discovery model & repository contract
-│   │   │       └── presentation/    # DiscoveryListScreen, DiscoveryDetailScreen
-│   │   └── main.dart                # Application entry point & dependency wiring
-│   ├── test/                        # Unit and widget test suite
-│   └── assets/                      # App launcher icons and visual assets
-├── docs/
-│   ├── architecture.md              # Detailed architecture document
-│   ├── decisions/                   # Architecture Decision Records (ADRs)
-│   └── sprints/                     # Post-sprint completion reports
-├── .env.example                     # Environment secrets template
-├── .gitignore
-└── README.md
+â”œâ”€â”€ app/                              # Flutter mobile application
+â”‚   â”œâ”€â”€ lib/
+â”‚   â”‚   â”œâ”€â”€ core/
+â”‚   â”‚   â”‚   â”œâ”€â”€ config/              # Environment and runtime configurations
+â”‚   â”‚   â”‚   â””â”€â”€ errors/              # Typed failure and error classes
+â”‚   â”‚   â”œâ”€â”€ features/
+â”‚   â”‚   â”‚   â”œâ”€â”€ identification/      # S1 core capture & AI identification pipeline
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ data/            # OpenAI Vision implementation
+â”‚   â”‚   â”‚   â”‚   â”œâ”€â”€ domain/          # Entities and contracts (ImageIdentifier)
+â”‚   â”‚   â”‚   â”‚   â””â”€â”€ presentation/    # UI Screens (Home, Camera, Result)
+â”‚   â”‚   â”‚   â””â”€â”€ discovery/           # S2 persistent local history feature
+â”‚   â”‚   â”‚       â”œâ”€â”€ data/            # Drift database, ImageStorageService, repository
+â”‚   â”‚   â”‚       â”œâ”€â”€ domain/          # Discovery model & repository contract
+â”‚   â”‚   â”‚       â””â”€â”€ presentation/    # DiscoveryListScreen, DiscoveryDetailScreen
+â”‚   â”‚   â””â”€â”€ main.dart                # Application entry point & dependency wiring
+â”‚   â”œâ”€â”€ test/                        # Unit and widget test suite
+â”‚   â””â”€â”€ assets/                      # App launcher icons and visual assets
+â”œâ”€â”€ docs/
+â”‚   â”œâ”€â”€ architecture.md              # Detailed architecture document
+â”‚   â”œâ”€â”€ decisions/                   # Architecture Decision Records (ADRs)
+â”‚   â””â”€â”€ sprints/                     # Post-sprint completion reports
+â”œâ”€â”€ .env.example                     # Environment secrets template
+â”œâ”€â”€ .gitignore
+â””â”€â”€ README.md
 ```
 
 ### Core Architecture Highlights
@@ -195,13 +195,14 @@ flutter build apk --debug
 
 | Sprint | Focus | Status |
 | :--- | :--- | :--- |
-| **S1 — Capture** | Complete camera capture, AI identification, structured answer, error recovery loop | Complete (v0.1.0) |
-| **S2 — Memory** | Local SQLite persistence, isolated image storage, detail views, and deletions | **Complete (v0.2.0)** |
-| **S3 — Spatial** | GPS/Map tags, location-based categorization, spatial discovery recall | *Backlog* |
-| **S4 — Offline** | On-device lightweight models, audio integration, OCR indexing | *Backlog* |
+| **S1 â€” Capture** | Complete camera capture, AI identification, structured answer, error recovery loop | Complete (v0.1.0) |
+| **S2 â€” Memory** | Local SQLite persistence, isolated image storage, detail views, and deletions | **Complete (v0.2.0)** |
+| **S3 â€” Spatial** | GPS/Map tags, location-based categorization, spatial discovery recall | *Backlog* |
+| **S4 â€” Offline** | On-device lightweight models, audio integration, OCR indexing | *Backlog* |
 
 ---
 
 ## License
 
 Private project. All rights reserved.
+

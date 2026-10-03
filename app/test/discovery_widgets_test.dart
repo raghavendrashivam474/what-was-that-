@@ -115,9 +115,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Nothing here yet.'), findsOneWidget);
+    expect(find.text('No discoveries yet'), findsOneWidget);
     expect(
-      find.text('The next time you discover\nsomething unfamiliar, save it here.'),
+      find.text("Capture something you don't recognize\nand it will appear here."),
       findsOneWidget,
     );
     expect(find.text('What is this?'), findsOneWidget);
@@ -210,3 +210,4 @@ void main() {
     expect(repository.discoveries.first.title, 'Monstera Deliciosa');
   });
 }
+

@@ -1,8 +1,9 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:what_was_that/features/discovery/domain/entities/discovery.dart';
-import 'package:what_was_that/features/discovery/domain/repositories/discovery_repository.dart';
-import 'package:what_was_that/features/identification/domain/entities/identification_result.dart';
+import '../../../../features/discovery/domain/entities/discovery.dart';
+import '../../../../features/discovery/domain/repositories/discovery_repository.dart';
+import '../../../../features/identification/domain/entities/identification_result.dart';
+import '../../presentation/screens/discovery_map_screen.dart';
 
 class DiscoveryDetailScreen extends StatelessWidget {
   final Discovery discovery;
@@ -84,6 +85,7 @@ class DiscoveryDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isUnidentifiable = !discovery.identifiable;
+    final hasLocation = discovery.location != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -118,6 +120,7 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
+
               // Date stamp
               Text(
                 'Discovered on ${_formatDate(discovery.createdAt)}',
@@ -127,6 +130,7 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
+
               // Title
               Text(
                 discovery.title,
@@ -137,13 +141,15 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
+
               // Explanation
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isUnidentifiable
                       ? Colors.orange.shade50
-                      : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      : theme.colorScheme.surfaceContainerHighest
+                          .withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isUnidentifiable
@@ -160,6 +166,7 @@ class DiscoveryDetailScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+
               // Confidence Badge
               if (discovery.identifiable)
                 Center(
@@ -169,7 +176,8 @@ class DiscoveryDetailScreen extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getConfidenceColor(discovery.confidence).withValues(alpha: 0.12),
+                      color: _getConfidenceColor(discovery.confidence)
+                          .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _getConfidenceColor(discovery.confidence),
@@ -184,6 +192,72 @@ class DiscoveryDetailScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+              const SizedBox(height: 24),
+
+              // Location Segment (S3-B Spatial Recall)
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Location Context',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (hasLocation) ...[
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      color: theme.colorScheme.primary,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Saved with coordinates:\nLat: ${discovery.location!.latitude.toStringAsFixed(5)}, Lon: ${discovery.location!.longitude.toStringAsFixed(5)}',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => DiscoveryMapScreen(
+                          repository: repository,
+                          initialDiscoveryId: discovery.id,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.map_outlined),
+                  label: const Text('View on Map'),
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.location_off_outlined,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Location context was not captured for this discovery.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

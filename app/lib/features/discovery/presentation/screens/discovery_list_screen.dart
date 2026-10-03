@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:what_was_that/features/discovery/domain/entities/discovery.dart';
 import 'package:what_was_that/features/discovery/domain/repositories/discovery_repository.dart';
@@ -6,6 +6,7 @@ import 'package:what_was_that/features/identification/domain/entities/identifica
 import 'package:what_was_that/features/identification/domain/repositories/image_identifier.dart';
 import 'package:what_was_that/features/identification/presentation/screens/camera_screen.dart';
 import 'package:what_was_that/features/discovery/presentation/screens/discovery_detail_screen.dart';
+import 'package:what_was_that/features/discovery/presentation/screens/discovery_map_screen.dart';
 
 class DiscoveryListScreen extends StatefulWidget {
   final DiscoveryRepository repository;
@@ -67,6 +68,7 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
       _isLoading = true;
       _error = null;
     });
+
     try {
       final discoveries = await widget.repository.getAll();
       setState(() {
@@ -169,6 +171,21 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
       appBar: AppBar(
         title: const Text('My Discoveries'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.map_outlined),
+            tooltip: 'Discovery Map',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => DiscoveryMapScreen(
+                    repository: widget.repository,
+                  ),
+                ),
+              ).then((_) => _loadDiscoveries());
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -244,6 +261,7 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
 
   Widget _buildEmptyState(BuildContext context) {
     final theme = Theme.of(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),
@@ -295,6 +313,7 @@ class _DiscoveryListScreenState extends State<DiscoveryListScreen> {
 
   Widget _buildNoResultsState() {
     final theme = Theme.of(context);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32.0),

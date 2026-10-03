@@ -1,14 +1,17 @@
 ﻿import 'package:flutter/material.dart';
-
+import '../../../discovery/domain/repositories/discovery_repository.dart';
+import '../../../discovery/presentation/screens/discovery_list_screen.dart';
 import '../../domain/repositories/image_identifier.dart';
 import 'camera_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final ImageIdentifier identifier;
+  final DiscoveryRepository? repository;
 
   const HomeScreen({
     super.key,
     required this.identifier,
+    this.repository,
   });
 
   @override
@@ -24,7 +27,6 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(flex: 2),
-
               // App Icon Display
               Center(
                 child: Container(
@@ -55,7 +57,6 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-
               // Brand / App Name
               Text(
                 'WHAT WAS THAT?',
@@ -66,7 +67,6 @@ class HomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-
               // Subtitle
               Text(
                 'See something unfamiliar?\nPoint the camera and find out.',
@@ -76,9 +76,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-
               const Spacer(flex: 3),
-
               // Primary Action Button: "What is this?"
               Center(
                 child: Column(
@@ -89,6 +87,7 @@ class HomeScreen extends StatelessWidget {
                           MaterialPageRoute(
                             builder: (context) => CameraScreen(
                               identifier: identifier,
+                              repository: repository,
                             ),
                           ),
                         );
@@ -125,8 +124,33 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-
-              const Spacer(flex: 3),
+              const Spacer(flex: 2),
+              // Secondary Entry Point: "My Discoveries"
+              if (repository != null)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => DiscoveryListScreen(
+                          repository: repository!,
+                          identifier: identifier,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.bookmark_border),
+                  label: const Text(
+                    'My Discoveries',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              const Spacer(flex: 1),
             ],
           ),
         ),

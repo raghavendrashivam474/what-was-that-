@@ -1,17 +1,32 @@
 ﻿import 'dart:io';
 import 'package:flutter/material.dart';
-
+import '../../../../core/errors/failures.dart';
+import '../../../discovery/data/datasources/image_storage_service.dart';
+import '../../../discovery/domain/entities/discovery.dart';
+import '../../../discovery/domain/repositories/discovery_repository.dart';
 import '../../domain/entities/identification_result.dart';
 
-class ResultScreen extends StatelessWidget {
+class ResultScreen extends StatefulWidget {
   final String imagePath;
   final IdentificationResult result;
+  final DiscoveryRepository? repository;
+  final ImageStorageService? imageStorageService;
 
   const ResultScreen({
     super.key,
     required this.imagePath,
     required this.result,
+    this.repository,
+    this.imageStorageService,
   });
+
+  @override
+  State<ResultScreen> createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen> {
+  bool _isSaving = false;
+  bool _isSaved = false;
 
   Color _getConfidenceColor(IdentificationConfidence confidence) {
     switch (confidence) {
@@ -26,10 +41,66 @@ class ResultScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _saveDiscovery() async {
+    if (_isSaving || _isSaved || widget.repository == null) return;
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    String? persistedImagePath;
+    try {
+      final storageService = widget.imageStorageService ?? LocalImageStorageService();
+      persistedImagePath = await storageService.saveImagePermanently(widget.imagePath);
+
+      final discovery = Discovery.create(
+        identificationResult: widget.result,
+        imagePath: persistedImagePath,
+      );
+
+      await widget.repository!.save(discovery);
+
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _isSaved = true;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✓ Saved to your discoveries'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      // If db save failed after copying image, cleanup to prevent orphaned file
+      if (persistedImagePath != null) {
+        final storageService = widget.imageStorageService ?? LocalImageStorageService();
+        await storageService.deleteImage(persistedImagePath);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+      });
+
+      final errorMessage = e is Failure
+          ? e.message
+          : "Couldn't save this discovery. Please try again.";
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isUnidentifiable = !result.identifiable;
+    final isUnidentifiable = !widget.result.identifiable;
 
     return Scaffold(
       appBar: AppBar(
@@ -52,9 +123,9 @@ class ResultScreen extends StatelessWidget {
                 child: Container(
                   height: 260,
                   color: Colors.black12,
-                  child: File(imagePath).existsSync()
+                  child: File(widget.imagePath).existsSync()
                       ? Image.file(
-                          File(imagePath),
+                          File(widget.imagePath),
                           fit: BoxFit.cover,
                         )
                       : const Center(
@@ -63,10 +134,9 @@ class ResultScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-
               // Title / Identification name
               Text(
-                result.title,
+                widget.result.title,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: isUnidentifiable ? Colors.orange.shade900 : null,
@@ -74,7 +144,6 @@ class ResultScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),
-
               // Explanation
               Container(
                 padding: const EdgeInsets.all(16),
@@ -90,7 +159,7 @@ class ResultScreen extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  result.explanation,
+                  widget.result.explanation,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     height: 1.4,
                   ),
@@ -98,9 +167,8 @@ class ResultScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-
               // Confidence badge
-              if (result.identifiable)
+              if (widget.result.identifiable)
                 Center(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -108,25 +176,73 @@ class ResultScreen extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _getConfidenceColor(result.confidence).withValues(alpha: 0.12),
+                      color: _getConfidenceColor(widget.result.confidence).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: _getConfidenceColor(result.confidence),
+                        color: _getConfidenceColor(widget.result.confidence),
                       ),
                     ),
                     child: Text(
-                      'Confidence: ${result.confidence.displayName}',
+                      'Confidence: ${widget.result.confidence.displayName}',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: _getConfidenceColor(result.confidence),
+                        color: _getConfidenceColor(widget.result.confidence),
                       ),
                     ),
                   ),
                 ),
               const SizedBox(height: 32),
-
+              // Save Discovery Button (if repository provided)
+              if (widget.repository != null) ...[
+                if (_isSaved)
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade300),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.green.shade700, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Saved to your discoveries',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  FilledButton.icon(
+                    onPressed: _isSaving ? null : _saveDiscovery,
+                    icon: _isSaving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.bookmark_add_outlined),
+                    label: Text(
+                      _isSaving ? 'Saving...' : 'Save Discovery',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+              ],
               // Try Again Button
-              FilledButton.icon(
+              OutlinedButton.icon(
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
@@ -135,7 +251,7 @@ class ResultScreen extends StatelessWidget {
                   'Try Again',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                style: FilledButton.styleFrom(
+                style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

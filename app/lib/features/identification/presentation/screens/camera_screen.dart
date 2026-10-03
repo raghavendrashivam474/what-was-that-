@@ -1,17 +1,22 @@
 ﻿import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-
 import '../../../../core/errors/failures.dart';
+import '../../../discovery/data/datasources/image_storage_service.dart';
+import '../../../discovery/domain/repositories/discovery_repository.dart';
 import '../../domain/repositories/image_identifier.dart';
 import 'result_screen.dart';
 
 class CameraScreen extends StatefulWidget {
   final ImageIdentifier identifier;
+  final DiscoveryRepository? repository;
+  final ImageStorageService? imageStorageService;
 
   const CameraScreen({
     super.key,
     required this.identifier,
+    this.repository,
+    this.imageStorageService,
   });
 
   @override
@@ -24,7 +29,6 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
   bool _isInitializing = true;
   String? _errorMessage;
   bool _isPermissionDenied = false;
-
   XFile? _capturedImage;
   bool _isLoading = false;
 
@@ -157,6 +161,8 @@ class _CameraScreenState extends State<CameraScreen> with WidgetsBindingObserver
           builder: (context) => ResultScreen(
             imagePath: _capturedImage!.path,
             result: result,
+            repository: widget.repository,
+            imageStorageService: widget.imageStorageService,
           ),
         ),
       );
